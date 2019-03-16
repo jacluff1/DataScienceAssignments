@@ -66,3 +66,4 @@ def plot():
 
     plt.legend()
     plt.show()
+    fig.savefig("Multivarate Example.pdf")
