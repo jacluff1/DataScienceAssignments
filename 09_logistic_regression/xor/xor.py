@@ -46,14 +46,11 @@ plt.close(fig)
 xm = np.linspace(-6,6,2000)
 ym = -(w[0] + w[1]*xm) / (w[2] + w[3]*xm)
 
-# pdb.set_trace()
-
 # make new figure
 fig,ax = plt.subplots()
 # fig.suptitle("Centered Around Mean")
 ax.scatter(x1, x2, c=y, label='data', alpha=.5)
-ax.plot(xm,ym, c='r', linewidth=2)
-# ax.plot(xm,-ym, c='r', linewidth=2, label='Decision Line')
+ax.plot(xm,ym, c='r', linewidth=2, label='Decision Line')
 ax.set_aspect(1)
 ax.set_title("'Xor' Logistic Regression Classification Problem")
 ax.set_xlabel('x1')
