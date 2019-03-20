@@ -24,8 +24,8 @@ we can center the data around 0 and just use features: bias + x_1^2 x_2^2
 # center the data around 0
 x1 = data.x1.values - data.x1.values.sum()/N
 x2 = data.x2.values - data.x2.values.sum()/N
-X = np.column_stack((np.ones((N,1)), x1**2, x2**2))
-# X = np.column_stack((np.ones((N,1)), x1**2, x2**2, x1*x2))
+# X = np.column_stack((np.ones((N,1)), x1**2, x2**2))
+X = np.column_stack((np.ones((N,1)), x1**2, x2**2, x1*x2))
 y = data.c.astype(int)
 
 def sigmoid(h):
@@ -37,10 +37,10 @@ def cross_entropy(y, p_hat):
 def accuracy(y, p_hat):
     return np.mean(y == np.round(p_hat))
 
-w = np.random.randn(3)
+w = np.random.randn(X.shape[1])
 # w = np.random.randn(4)
-eta = 1e-3
-epochs = int(1e3)
+eta = 1e-5
+epochs = int(1e5)
 J = [0]*epochs
 
 for epoch in range(epochs):
@@ -54,17 +54,16 @@ plt.plot(J)
 fig.savefig("J.pdf")
 plt.close(fig)
 
-xrange = 6
-xm = np.linspace(-xrange,xrange,2001)
-ym = np.sqrt( -(w[0] + w[1]*xm**2) / w[2] )
-# ym = (np.sqrt( xm**2 * (w[3]**2 - 4*w[1]*w[2]) - 4*w[0]*w[2] ) + w[3]*xm) / (2*w[2])
+xrange = 8
+xm = np.linspace(-xrange,xrange,100)
+xm,ym = np.meshgrid(xm,xm)
+Z = w[0] + w[1]*xm**2 + w[2]*ym**2 + w[3]*xm*ym
 
 # make new figure
 fig,ax = plt.subplots()
 fig.suptitle("'Donut' Logistic Regression Classification Problem")
 ax.scatter(x1, x2, c=y, label='data', alpha=.5)
-ax.plot(xm,ym, c='r', linewidth=2)
-ax.plot(xm,-ym, c='r', linewidth=2, label='Decision Line')
+ax.contour(xm,ym,Z, [0], colors='r', linewidths=2)
 ax.set_aspect(1)
 ax.set_title("Centered Around Mean")
 ax.set_xlabel('x1')

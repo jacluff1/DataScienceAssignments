@@ -28,8 +28,8 @@ def accuracy(y, p_hat):
     return np.mean(y == np.round(p_hat))
 
 w = np.random.randn(X.shape[1])
-eta = 1e-3
-epochs = int(1e3)
+eta = 1e-5
+epochs = int(1e5)
 J = [0]*epochs
 
 for epoch in range(epochs):

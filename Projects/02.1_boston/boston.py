@@ -29,18 +29,3 @@ PHI = np.column_stack( (np.ones((N,1)),data.values) )
 
 # make an instance of LinearRegression using PHI and Y
 lr = LinearRegression(PHI,Y,feature_names)
-
-
-
-
-
-
-
-
-
-
-    # # make a DF to collect W
-    # Wdf = pd.DataFrame(columns=W_names, index=['wholeSet', 'training', 'validation', 'test'])
-    #
-    # # make a DF to collect R2
-    # R2df = pd.DataFrame(columns=)
