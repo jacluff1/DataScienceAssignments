@@ -54,7 +54,8 @@ plt.plot(J)
 fig.savefig("J.pdf")
 plt.close(fig)
 
-xm = np.linspace(-3.2,3.2,100)
+xrange = 6
+xm = np.linspace(-xrange,xrange,2001)
 ym = np.sqrt( -(w[0] + w[1]*xm**2) / w[2] )
 # ym = (np.sqrt( xm**2 * (w[3]**2 - 4*w[1]*w[2]) - 4*w[0]*w[2] ) + w[3]*xm) / (2*w[2])
 
