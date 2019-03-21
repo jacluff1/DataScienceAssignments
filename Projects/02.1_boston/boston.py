@@ -16,7 +16,7 @@ N,P = data.shape
 
 # pull out the target from the data
 target = "medv"
-Y = data[target].values.reshape([N,1])
+Y = data[target].values
 data.drop(columns=[target], inplace=True)
 
 # make an object array of strings containing all the feature names for the PHI matrix
@@ -27,5 +27,23 @@ feature_names[1:] = data.keys()
 # make PHI matrix
 PHI = np.column_stack( (np.ones((N,1)),data.values) )
 
-# make an instance of LinearRegression using PHI and Y
-lr = LinearRegression(PHI,Y,feature_names)
+# normalize PHI
+for j in np.arange(1,PHI.shape[1]):
+    xmin,xmax = PHI[:,j].min(), PHI[:,j].max()
+    PHI[:,j] = (PHI[:,j] - xmin) / (xmax - xmin)
+
+# make an instance of LinearRegression
+lr = LinearRegression()
+
+# get the train, validate, and test data
+train, validate, test = lr.get_train_validation_test_sets(PHI,Y)
+
+# train - validate
+tv_results = lr.grid_search_train_validate(train,validate, save_curve=True, eta=1e-4, epochs=1e7, L1=[0], L2=[4])
+
+# L1: (0,50,10)
+# L2: (0,50,10)
+# l1,l2 --> 0,10
+
+# L2: (0,20,1)
+# l2 --> 4
