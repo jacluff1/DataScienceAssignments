@@ -39,11 +39,20 @@ lr = LinearRegression()
 train, validate, test = lr.get_train_validation_test_sets(PHI,Y)
 
 # train - validate
-tv_results = lr.grid_search_train_validate(train,validate, save_curve=True, eta=1e-4, epochs=1e7, L1=[0], L2=[4])
+
+# tv_results = lr.grid_search_train_validate(train,validate, save_curve=True, eta=1e-4, epochs=1e7, L1=np.arange(0,50,10), L2=np.arange(0,50,10))
 
 # L1: (0,50,10)
 # L2: (0,50,10)
 # l1,l2 --> 0,10
 
+# tv_results = lr.grid_search_train_validate(train,validate, save_curve=True, eta=1e-4, epochs=1e7, L1=[0], L2=np.arange(0,20,1))
+
 # L2: (0,20,1)
 # l2 --> 4
+
+tv_results = lr.grid_search_train_validate(train,validate, save_curve=True, eta=1e-4, epochs=1e7, L1=np.arange(0,2,1), L2=np.arange(0,10,1))
+
+# L1: (0,10,1)
+# L2: (0,10,1)
+#l1,l2 --> ?,?
