@@ -1,0 +1,1 @@
+When plotting Y vs Yhat or getting the confusion matrix, should I only plot the test set?

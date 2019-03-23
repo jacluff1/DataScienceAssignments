@@ -23,7 +23,7 @@ def basic_plots(lr):
     ax.barh(ineg,Wneg.values,align='center',tick_label=Wneg.index)
     # ax.vlines(0,ineg.min(),ineg.max(), color='r', label="Average")
     # ax.set_yticks(i,feature_names)
-    ax.legend()
+    # ax.legend()
     fig.savefig("negative.pdf")
     plt.close(fig)
 
@@ -32,10 +32,11 @@ def basic_plots(lr):
     fig,ax = plt.subplots()
     fig.suptitle("Factors that Positively Affect Sale Price")
 
-    ax.barh(ipos,Wpos.values,align='center',tick_label=Wpos.index, label="Features")
+    bars = ax.barh(ipos,Wpos.values, align='center', tick_label=Wpos.index)
+    ax.get_children()[7].set_color('k')
     # ax.vlines(0,ipos.min(),ipos.max(), color='r', label="Average")
     # ax.set_yticks(i,feature_names)
-    ax.legend()
+    # ax.legend()
     fig.savefig("positive.pdf")
     plt.close(fig)
 

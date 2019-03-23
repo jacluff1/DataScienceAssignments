@@ -48,11 +48,11 @@ feature_names[1:] = data.keys()
 # make PHI matrix
 PHI = np.column_stack( (np.ones((N,1)),data.values) )
 
-# make an instance of LinearRegression
-lr = LinearRegression(PHI,Y,feature_names)
-
-# add the train, validate, and test data (normalized by default)
-lr.cv_add_sets()
+# # make an instance of LinearRegression
+# lr = LinearRegression(PHI,Y,feature_names)
+#
+# # add the train, validate, and test data (normalized by default)
+# lr.cv_add_sets()
 
 # use method cv_grid_search(**kwargs) until best hyperparameters found
 # lr.cv_grid_search(L1=np.arange(0,10,1), L2=np.arange(0,10,1), epochs=1e5)
