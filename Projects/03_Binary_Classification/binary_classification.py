@@ -8,6 +8,7 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 # import file with auxillary functions
 import auxillary as aux
+from classification import schema
 
 #===============================================================================
 """ get the data """
@@ -60,9 +61,18 @@ def one_hot_encode():
     for feature in data:
         # get unique entries in column
         unique_values = data[feature].unique()
+        # get the relevent dictionary from schema to convert the names
+        schema_key = feature.replace("-","_")
+        # grab the dictionary of feature names
+        feature1 = schema[schema_key]
         # for each unique value, add a column to data with binary input
         for uv in unique_values:
-            data[f"{feature}-{uv}"] = (data[feature] == uv).astype(np.int32)
+            # uv maps to a value in feature1 dictionary, we need to get the key in feature1 that maps to the uv value
+            for name,identifier in feature1.items():
+                if identifier == uv:
+                    description = name
+            # make a new column in data named after the feature and description
+            data[f"{feature}-{description}"] = (data[feature] == uv).astype(np.int32)
     # now, drop all the original columns
     data.drop(columns=column_names, inplace=True)
 # run one_hot_encode to update data
@@ -166,14 +176,34 @@ def train_validate_test(L1,L2,**kwargs):
 # validation accuracy --> 0.9907635467980296
 
 # trial 3
-# tvt3 = bc.train_validate_test(np.array([0,7.3890560989306495]), np.array([0,2.718281828459045]))
+# tvt3 = train_validate_test(np.array([0,7.3890560989306495]), np.array([0,2.718281828459045]))
 # best l1,l2 --> 7.3890560989306495, 0.0
 # validation accuracy --> 0.9821428571428571
 
 # trial 4
-# tvt4 = bc.train_validate_test(np.linspace(0,7.3890560989306495,3), np.linspace(0,2.718281828459045,3))
+# tvt4 = train_validate_test(np.linspace(0,7.3890560989306495,3), np.linspace(0,2.718281828459045,3))
 # best l2,l2 --> 7.3890560989306495, 2.718281828459045
 # validation accuracy --> 0.9870689655172413
+
+# final run
+tvt_results = train_validate_test(np.arange(6.4,8,.1),np.arange(2.5,3,.1))
+
+# test run to make sure code is generally working
+# just get the requirements for the best parameters
+# tvt_results = train_validate_test([7.3890560989306495], [2.718281828459045],epochs=1e2)
+
+# get Y_hat from test data
+def get_test_Y_hat(tvt_results):
+    # extract required arrays
+    W = tvt_results['W']
+    Y = test['Y']
+    PHI = test['PHI']
+    # get P_hat
+    P_hat = aux.sigmoid(PHI.dot(W))
+    # get Y_hat
+    Y_hat = np.round(P_hat)
+    return Y_hat
+Y_hat = get_test_Y_hat(tvt_results)
 
 #===============================================================================
 """ checking the model """
@@ -182,17 +212,10 @@ def train_validate_test(L1,L2,**kwargs):
 # get the percent error -- can't really do this since the target is binary
 
 # plot Y vs Y_hat -- actually, this wouldn't really be useful in a classifiation problem...
-# when calculating this, should I only compare the test set against the actual?
 def plot_Y_vs_Y_hat(tvt_results):
     # make sure save directory exists and make filename
     if not os.path.isdir("check"): os.mkdir("check")
     filename = "Y_vs_Yhat.pdf"
-    # extract W from train-validate-test results
-    W = tvt_results['W']
-    # get P_hat
-    P_hat = aux.sigmoid(PHI.dot(W))
-    # get Y_hat
-    Y_hat = np.round(P_hat)
     # make figure
     fig,ax = plt.subplots()
     fig.suptitle("Comparing Predicted Classification with Actual Classification", fontsize=20)
@@ -204,20 +227,13 @@ def plot_Y_vs_Y_hat(tvt_results):
     print(f"\nsaved {filename}")
     plt.close(fig)
 
-# check for statistical significance of weights -- this is probably only for a linear regression model; doesn't seem applicable
+# check for statistical significance of weights -- this is probably only for a linear regression model; doesn't seem applicable to classifiation
 def p_test(tvt_results,alpha=0.05):
     return
 
 # get confusion matrix
 def confusion_matrix(tvt_results):
-    # extract required arrays
-    W = tvt_results['W']
     Y = test['Y']
-    PHI = test['PHI']
-    # get P_hat
-    P_hat = aux.sigmoid(PHI.dot(W))
-    # get Y_hat
-    Y_hat = np.round(P_hat)
     # True results
     T = (Y == Y_hat)
     # False results
@@ -233,13 +249,144 @@ def confusion_matrix(tvt_results):
     return CM
 
 # precision
+def precision(CM):
+    # TP / (TP + FP)
+    return CM[1,1] / (CM[1,1] + CM[0,1])
 
 # recall
+def recall(CM):
+    # TP / (TP + FN)
+    return CM[1,1] / (CM[1,1] + CM[1,0])
 
 # F-score
+def F_score(precission,recall):
+    return 2*precission*recall / (precission+recall)
 
 # ROC_AUC
 
 #===============================================================================
 """ business application """
 #===============================================================================
+
+# what is the probability that a mushroom marked as edible is actually poisonous? p( Y(0) | Yhat(1) )
+def explore1():
+    #====================================================================
+    # p(Y(0))
+    #====================================================================
+
+    # get the probability of it actually being poisonous
+    p1 = (test['Y'][test['Y'] == 0]).shape[0]
+
+    #====================================================================
+    # p(Yhat(1))
+    #====================================================================
+
+    # get the probability of the model predicting it edible
+    p2 = Y_hat.sum()
+
+    #====================================================================
+    # p( Yhat(1) | Y(0) )
+    #====================================================================
+
+    # get a mask that filters for only Y == 0 and apply it to Yhat = 1
+    mask1 = test['Y'] == 0
+    p3 = Y_hat[mask1].sum() / Y_hat[mask1].shape[0]
+
+    return p3*p1/p2
+
+# Which shrooms are the most dangerous to eat and which ones are the safest? (Shrooms with which features?) -- this may be worth looking into, I'll do it if I have time
+def explore2():
+    return
+
+# if the model says its edible, which features have the highest chance of being misclassified and poisoning you? -- this is nice to have, not sure it should go in the presentation though
+def explore3():
+
+    #====================================================================
+    # see which features show up the most in FP --> N_FP
+    #====================================================================
+
+    Y = test['Y'].copy()
+    # get a mask of length N3 where Y and Y_hat are not equal
+    mask1 = (Y != Y_hat)
+    # get a mask of length N < N3 where the first filter is applied and also must be False Negatives
+    mask2 = (Y[mask1] == 0)
+    # get a filtered design matrix that only has false negatives and drops the bias column
+    FP = test['PHI'][mask1][mask2][:,1:]
+    # sum up the features column wise to find which features show up most as false negatives
+    N_FP = FP.sum(axis=0)
+
+    #====================================================================
+    # see which features show up most that are poisonous --> N_p
+    #====================================================================
+
+    # get a mask to select only the poisonous data
+    mask3 = (Y == 0)
+    # apply the mask to PHI and drop bias column
+    p = test['PHI'][mask3][:,1:]
+    # add up the totals for each feature
+    N_p = p.sum(axis=0)
+    # get a mask to filter out 0 from N_p
+    mask4 = N_p != 0
+    # filter N_p and N_FP
+    N_p = N_p[mask4]
+    N_FP = N_FP[mask4]
+
+    #====================================================================
+    # put the two results together
+    #====================================================================
+
+    # get the ratio N_FP : N_p
+    ratio = N_FP / N_p
+    # find a mask to sort ratio and the names by so largest ratios are first
+    mask5 = np.argsort(ratio)[::-1]
+    # apply mask and take first 5
+    ratio = ratio[mask5][:20]
+    names = data.keys()[mask5][:20]
+    # get a mask to only select ratios > .5
+    mask6 = ratio >= .5
+    # filter ratio and names
+    ratio = ratio[mask6]
+    names = names[mask6]
+
+    #====================================================================
+    # plot the results in barh figure
+    #====================================================================
+
+    # set up a barh plot
+    fig,ax = plt.subplots()
+    fig.suptitle("Most Deadly Features")
+    index = np.arange(names.shape[0])
+    ax.barh(index, ratio*100)
+    ax.vlines(100,index[0]-.5,index[-1]+1, color='r')
+    for i in np.arange(10,100,20):
+        ax.vlines(i,index[0]-.5,index[-1]+1, color='k', alpha=.5)
+    ax.set_yticks(index)
+    ax.set_yticklabels(names)
+    ax.set_ylim(index[0]-.5,index[-1]+1)
+    ax.set_xlim(0,101)
+    ax.set_xlabel("% Deadly")
+    plt.subplots_adjust(left=.4)
+    # save fig
+    filename = "deadlyFeatures.pdf"
+    fig.savefig(filename)
+    print(f"\nsaved {filename}")
+    plt.close(fig)
+
+#========================================================================
+# get all reportable results
+#========================================================================
+
+def run():
+    # get confusion matrix
+    CM = confusion_matrix(tvt_results)
+    # get precision
+    P = precision(CM)
+    # get recall
+    R = recall(CM)
+    # get F-score
+    F = F_score(P,R)
+    # get probability of eating poisonous mushroom
+    p_poison = explore1()
+    # get the most deadly features
+    explore3()
+    return dict(CM=CM, P=P, R=R, F=F, p_poison=p_poison)
