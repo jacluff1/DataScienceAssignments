@@ -44,14 +44,15 @@ def pickle_data_sets():
         # find the number of empty pixels
         np.array([ aux.how_many_empty_pixels(X[i,:]) for i in range(N) ]),
         # find the sum of quadrant 1
-        np.array([ aux.sum_quadrant1(X[i,:]) for i in range(N) ]),
+        np.array([ aux.average_quadrant1(X[i,:]) for i in range(N) ]),
         # find the sum of quadrant 2
-        np.array([ aux.sum_quadrant2(X[i,:]) for i in range(N) ]),
+        np.array([ aux.average_quadrant2(X[i,:]) for i in range(N) ]),
         # find the sum of quadrant 3
-        np.array([ aux.sum_quadrant3(X[i,:]) for i in range(N) ]),
+        np.array([ aux.average_quadrant3(X[i,:]) for i in range(N) ]),
         # find the sum of qudrant 4
-        np.array([ aux.sum_quadrant4(X[i,:]) for i in range(N) ])
+        np.array([ aux.average_quadrant4(X[i,:]) for i in range(N) ])
         ))
+    # pdb.set_trace()
 
     # normalize the engineered features
     minimum = E.min(axis=0)
@@ -64,7 +65,6 @@ def pickle_data_sets():
 
     # construct design matrix
     PHI = np.column_stack(( np.ones((N,1)), X/255, E ))
-
 
     # one-hot Y
     Y = np.zeros((N,K))

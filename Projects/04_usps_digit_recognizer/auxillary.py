@@ -1,4 +1,5 @@
 import numpy as np
+import pdb
 
 def isolate_image(x):
 
@@ -65,7 +66,7 @@ def horizonal_symmetry(x):
 def how_many_empty_pixels(x):
     return x.shape[0] - x.nonzero()[0].shape[0]
 
-def sum_quadrant1(x):
+def average_quadrant1(x):
 
     # grab the isolated image
     x = isolate_image(x)
@@ -74,9 +75,9 @@ def sum_quadrant1(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return the sum of the first quadrant
-    return x[:i,j:].sum()
+    return x[:i,j:].mean()
 
-def sum_quadrant2(x):
+def average_quadrant2(x):
 
     # grab the isolated image
     x = isolate_image(x)
@@ -85,9 +86,9 @@ def sum_quadrant2(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return sum of second quadrant
-    return x[:i,:j].sum()
+    return x[:i,:j].mean()
 
-def sum_quadrant3(x):
+def average_quadrant3(x):
 
     # grab the isolated image
     x = isolate_image(x)
@@ -96,9 +97,9 @@ def sum_quadrant3(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return the sum of third quadrant
-    return x[i:,:j].sum()
+    return x[i:,:j].mean()
 
-def sum_quadrant4(x):
+def average_quadrant4(x):
 
     # grab the isolated image
     x = isolate_image(x)
@@ -107,4 +108,4 @@ def sum_quadrant4(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return the sum of the fourth quadrant
-    return x[i:,j:].sum()
+    return x[i:,j:].mean()
