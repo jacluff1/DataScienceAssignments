@@ -74,8 +74,12 @@ def average_quadrant1(x):
     # find bifurcating indicies
     i,j = x.shape[0]//2,x.shape[1]//2
 
-    # return the sum of the first quadrant
-    return x[:i,j:].mean()
+    # return the mean of the first quadrant
+    x = x[:i,j:]
+    if x.sum() == 0:
+        return 0
+    else:
+        return x.mean()
 
 def average_quadrant2(x):
 
@@ -86,7 +90,11 @@ def average_quadrant2(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return sum of second quadrant
-    return x[:i,:j].mean()
+    x = x[:i,:j]
+    if x.sum() == 0:
+        return 0
+    else:
+        return x.mean()
 
 def average_quadrant3(x):
 
@@ -97,7 +105,11 @@ def average_quadrant3(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return the sum of third quadrant
-    return x[i:,:j].mean()
+    x = x[i:,:j]
+    if x.sum() == 0:
+        return 0
+    else:
+        return x.mean()
 
 def average_quadrant4(x):
 
@@ -108,4 +120,8 @@ def average_quadrant4(x):
     i,j = x.shape[0]//2,x.shape[1]//2
 
     # return the sum of the fourth quadrant
-    return x[i:,j:].mean()
+    x = x[i:,j:]
+    if x.sum() == 0:
+        return 0
+    else:
+        return x.mean()

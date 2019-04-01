@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import os
-import pdb
 # import my auxillary module
 import auxillary as aux
 
@@ -52,7 +51,6 @@ def pickle_data_sets():
         # find the sum of qudrant 4
         np.array([ aux.average_quadrant4(X[i,:]) for i in range(N) ])
         ))
-    # pdb.set_trace()
 
     # normalize the engineered features
     minimum = E.min(axis=0)
@@ -283,14 +281,6 @@ def plot_handwritten_pictures(nrows=4, ncols=6, cmap='viridis'):
     fig.savefig(filename)
     print(f"\nsaved {filename}")
     plt.close(fig)
-
-
-
-
-
-
-
-    return
 
 #===============================================================================
 # run
