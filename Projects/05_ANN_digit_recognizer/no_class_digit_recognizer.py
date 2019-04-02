@@ -106,7 +106,7 @@ af = {
 M = {
     1 : 300,
     2 : 200,
-    3 : 100
+    3 : 200
     }
 
 # number of layers
@@ -367,17 +367,17 @@ def run(af,M,L1,L2,**kwargs):
     DIR = DIR[filter]
     best = np.array([ x[ x.find("_")+1 : x.find(".pkl") ] for x in DIR ], dtype=np.float32).max()
 
-    # # use if there are results saved already -- add hoc quick fix
-    # # send results to pickle
-    # acc = results['accuracy']['validate']
-    # if acc > best:
-    #     print("\nfound new best result!")
-    #     pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
-    # else:
-    #     print("\nno such luck...")
+    # use if there are results saved already -- add hoc quick fix
+    # send results to pickle
+    acc = results['accuracy']['validate']
+    if acc > best:
+        print("\nfound new best result!")
+        pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
+    else:
+        print("\nno such luck...")
 
-    # use if no results have been saved 
-    pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
+    # # use if no results have been saved
+    # pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
 
     print(results['accuracy'])
 
