@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import pdb
 # import from my DataScience library
-import DataScience.ActivatingFunctions as AF
+import DataScience.ActivationFunctions as AF
 import DataScience.ANN as ANN
 
 #===============================================================================
@@ -35,7 +35,8 @@ def pickle_data_sets():
     #===========================================================================
 
     # construct design matrix
-    PHI = X/255
+    PHI = np.column_stack((np.ones((N,1)), X/255))
+    # PHI = np.column_stack((np.ones((N,1)), X))
 
     # one-hot Y
     Y = np.zeros((N,K))
@@ -75,14 +76,18 @@ def pickle_data_sets():
     test = pd.Series( dict(PHI=PHI_test, Y=Y_test) )
 
     # send Series to pickle
-    print("\npickling train, validation and test sets...")
-    train.to_pickle("./train.pkl")
-    validate.to_pickle("./validate.pkl")
-    test.to_pickle("./test.pkl")
+    print("\npickle-ing train, validation and test sets...")
+    train.to_pickle("train.pkl")
+    validate.to_pickle("validate.pkl")
+    test.to_pickle("test.pkl")
 
 def read_pickle(set):
-    filename = f"./{set}.pkl"
-    print(f"\nreading {set} pickle...")
+    # filename = f"{set}.json"
+    # print(f"\nreading {set} pickle...")
+    # file = pd.read_pickle(filename, typ='series')
+    # file.to_dict()
+    # return file.to_dict()
+    filename = f"{set}.pkl"
     return pd.read_pickle(filename)
 
 #===============================================================================
@@ -90,22 +95,18 @@ def read_pickle(set):
 #===============================================================================
 
 # set up activation functions
-af_ReLU_5 = {
-    1: AF.ReLU(),
-    2: AF.ReLU(),
-    3: AF.ReLU(),
-    4: AF.ReLU(),
-    5: AF.ReLU(),
-    6: AF.softmax()
+af = {
+    1 : AF.tanh(),
+    2 : AF.tanh(),
+    3 : AF.tanh(),
+    4 : AF.softmax()
     }
 
 # set up number of nodes for each layer
-M_5 = {
-    1: 8,
-    2: 8,
-    3: 8,
-    4: 8,
-    5: 8
+M = {
+    1 : 300,
+    2 : 200,
+    3 : 100
     }
 
 # number of layers
@@ -114,6 +115,10 @@ L = len(af)
 #===============================================================================
 # basic functions
 #===============================================================================
+
+def shuffle(*args):
+    idx = np.random.permutation(len(args[0]))
+    return [X[idx] for X in args]
 
 def feed_forward(X,W,b,af):
 
@@ -125,89 +130,107 @@ def feed_forward(X,W,b,af):
 
     return Z
 
-def back_propagation(X,Y,af,M,l1,l2,**kwargs):
+def back_propagation(train,validate,af,M,l1,l2,**kwargs):
+
+    # input dimentions
+    if train['Y'].shape[0] == train['Y'].size:
+        pdb.set_trace()
+        K = len(set(train['Y']))
+    else:
+        K = train['Y'].shape[1]
+        N,D = train['PHI'].shape
 
     # kwargs
     save_plot = kwargs['save_plot'] if 'save_plot' in kwargs else True
     eta = kwargs['eta'] if 'eta' in kwargs else 1e-3
     epochs = kwargs['epochs'] if 'epochs' in kwargs else 1e3
     epochs = int(epochs)
-
-    # input dimentions
-    if Y.shape[0] == Y.size:
-        K = np.unique(Y).shape[0]
-    else:
-        K = Y.shape[1]
-    N,D = X.shape
+    batch_size = kwargs['batch_size'] if 'batch_size' in kwargs else 30
 
     # set random W and b of appropriate shapes
     W = {}
     b = {}
     W[1] = np.random.randn(D,M[1])
     b[1] = np.random.randn(M[1])
-    for l in M:
+    for l in range(2,L):
         W[l] = np.random.randn(M[l-1],M[l])
         b[l] = np.random.randn(M[l])
-    W[L] = np.random.randn(M[l-1],K)
+    W[L] = np.random.randn(M[L-1],K)
     b[L] = np.random.randn(K)
 
     # set up back propagation
-    J = np.zeros(epochs)
+    batches = N//batch_size
+    J_train = np.zeros(epochs*batches)
+    J_validate = np.zeros_like(J_train)
 
     for epoch in range(epochs):
 
-        # feed forward
-        Z = feed_forward(X,W,b)
+        X,Y = shuffle(train['PHI'],train['Y'])
 
-        # cross entropy
-        J[epoch] = ANN.cross_entropy(Y,Z[L])
+        for batch in range(batches):
 
-        # set up dZ, H,dH, W,dW, and b,db
-        dZ = {}
-        H,dH = {},{}
-        W,dW = {},{}
-        b,db = {},{}
+            X_b = X[(batch*batch_size):(batch+1)*batch_size]
+            Y_b = Y[(batch*batch_size):(batch+1)*batch_size]
 
-        # start with output layer
-        dH[L] = Z[L] - Y
-        dW[L] = np.matmul(Z[L-1].T,dH[L])
-        db[L] = dH[L].sum(axis=0)
-        W[L] -= eta*dW[L]
-        b[L] -= eta*db[L]
+            # feed forward
+            Z = feed_forward(X_b,W,b,af)
 
-        # now work back through each layer till input layer
-        for l in np.arange(2,L)[::-1]:
-            dZ[l] = np.matmul(dH[l+1],dW[l+1].T)
-            dH[l] = af[l].df(dZ[l],Z[l])
-            dW[l] = np.matmul(Z[l-1].T,dH[l])
-            db[l] = dH[l].sum(axis=0)
-            W[l] -= eta*dW[l]
-            b[l] -= eta*db[l]
+            # set up dZ,H,dH,dW, and db
+            dZ,H,dH,dW,db = {},{},{},{},{}
 
-        # end with input layer
-        dZ[1] = np.matmul(dH[2],W[2].T)
-        dH[1] = af[l].df(dZ[1],Z[1])
-        dW[1] = np.matmul(X.T,dH[1])
-        db[1] = dH[1].sum(axis=0)
-        W[1] -= eta*dW[1]
-        b[1] -= eta*db[1]
+            # start with output layer
+            dH[L] = Z[L] - Y_b
+            dW[L] = np.matmul(Z[L-1].T,dH[L])
+            db[L] = dH[L].sum(axis=0)
+            W[L] -= eta*dW[L] / batch_size
+            b[L] -= eta*db[L]
+
+            # now work back through each layer till input layer
+            for l in np.arange(2,L)[::-1]:
+                dZ[l] = np.matmul(dH[l+1],W[l+1].T)
+                dH[l] = dZ[l] * af[l].df(Z[l])
+                dW[l] = np.matmul(Z[l-1].T,dH[l])
+                db[l] = dH[l].sum(axis=0)
+                W[l] -= eta*dW[l] / batch_size
+                b[l] -= eta*db[l]
+
+            # end with input layer
+            dZ[1] = np.matmul(dH[2],W[2].T)
+            dH[1] = dZ[1] * af[1].df(Z[1])
+            dW[1] = np.matmul(X_b.T,dH[1])
+            db[1] = dH[1].sum(axis=0)
+            W[1] -= eta*dW[1] / batch_size
+            b[1] -= eta*db[1]
+
+            # feed forward for whole train and validation sets
+            Z_train = feed_forward(train['PHI'],W,b,af)
+            Z_validate = feed_forward(validate['PHI'],W,b,af)
+
+            # update train and validation cost functions
+            index = batch + (epoch*batches)
+            J_train[index] = ANN.cross_entropy(train['Y'],Z_train[L]) / N
+            J_validate[index] = ANN.cross_entropy(validate['Y'],Z_validate[L]) / validate['Y'].shape[0]
 
     # save figure
     if save_plot:
-        fig,ax = plt.figure()
-        fig.suptitle(f"$\\eta$: {eta}, epochs: {epochs}")
-        ax.plot(np.arange(epochs),J)
-        ax.set_xlabel(epoch)
-        ax.set_ylabel(J)
+        fig,ax = plt.subplots()
+        fig.suptitle(f"$\\eta$: {eta}, epochs: {epochs}, batch size: {batch_size}")
+        ax.plot(J_train, label="J: Training")
+        ax.plot(J_validate, label="J: Validation")
+        ax.set_xlabel("batch + (epochs x baches)")
+        ax.set_ylabel("J")
+        ax.legend(loc='best')
         if not os.path.isdir("J"): os.mkdir("J")
-        fig.savefig(f"J/J_eta_{eta}_epochs_{epochs}.pdf")
+        savename = f"J/J_eta_{eta}_epochs_{epochs}.pdf"
+        fig.savefig(savename)
         plt.close(fig)
+        print(f"saved {savename}")
 
     # collect results
     results = {
         'W'     : W, # weights
-        'b'     : b, # bias
-        'P_hat' : Z[L] # output predictions
+        'b'     : b # bias
+        # 'P_hat' : Z[L] # output predictions
         }
 
     # output results
@@ -219,19 +242,16 @@ def back_propagation(X,Y,af,M,l1,l2,**kwargs):
 
 def train_validate_test(train,validate,test,af,M,l1,l2,**kwargs):
 
-    # kwargs
-    print_acc = kwargs['print_acc'] if 'print_acc' in kwargs else False
-    pickle = kwargs['pickle'] if 'pickle' in kwargs else True
-    output = kwargs['output'] if 'output' in kwargs else True
-
+    # print message
     print(f"\nperforming train-validate-test for lambda: {l1},{l2}")
 
     # training results
-    tr = back_propagation(train['PHI'],train['Y'],af,M,l1,l2,**kwargs)
-    P_hat_train = tr['P_hat']
+    bp = back_propagation(train,validate,af,M,l1,l2,**kwargs)
+    W = bp['W']
+    b = bp['b']
+    Z_train = feed_forward(train['PHI'],W,b,af)
+    P_hat_train = Z_train[len(af)]
     acc_train = ANN.accuracy(train['Y'],P_hat_train)
-    W = tr['W']
-    b = tr['b']
 
     # validate results
     Z_validate = feed_forward(validate['PHI'],W,b,af)
@@ -241,7 +261,7 @@ def train_validate_test(train,validate,test,af,M,l1,l2,**kwargs):
     # test results
     Z_test = feed_forward(test['PHI'],W,b,af)
     P_hat_test = Z_test[len(af)]
-    acc_validate = ANN.accuracy(test['Y'],P_hat_test)
+    acc_test = ANN.accuracy(test['Y'],P_hat_test)
 
     # collect results
     results = {
@@ -251,19 +271,11 @@ def train_validate_test(train,validate,test,af,M,l1,l2,**kwargs):
         'accuracy'  : {
             'train'     :acc_train,
             'validate'  :acc_validate,
-            'test'      :acc_validate
+            'test'      :acc_test
             }
         }
 
-    # print results
-    if print_acc:
-        print("\nAccuracy:\ntrain: {:0.4f}\nvalidate: {:0.4f}\ntest: {:0.4f}".format(acc_train, acc_validate, acc_test))
-
-    # save results
-    if pickle: pd.Series(results).to_pickle('./train_results_{:0.4f}'.format(acc))
-
-    # output
-    if output: return results
+    return results
 
 #===============================================================================
 # figures
@@ -310,10 +322,14 @@ def plot_handwritten_pictures(nrows=4, ncols=6, cmap='inferno'):
 # run
 #===============================================================================
 
-def run(L1,L2,af,M,**kwargs):
+def run(af,M,L1,L2,**kwargs):
 
     # kwargs
     overwrite = kwargs['overwrite'] if 'overwrite' in kwargs else False
+
+    #===========================================================================
+    # set up data
+    #===========================================================================
 
     # check that pickles exist
     if any([ not os.path.isfile('train.pkl') , overwrite ]) : pickle_data_sets()
@@ -323,21 +339,47 @@ def run(L1,L2,af,M,**kwargs):
     validate = read_pickle('validate')
     test = read_pickle('test')
 
+    #===========================================================================
     # run cross validation
-    results = train_validate_test(train,validate,test,L1,L2,af,M,**kwargs)
+    #===========================================================================
 
-    # flatten out Y and Y_hat
-    Y_hat = results['Y_hat']
-    Y_hat = ANN.collapse_Y(Y_hat)
-    Y = ANN.collapse_Y(test['Y'])
+    # run cross validation
+    results = train_validate_test(train,validate,test,af,M,L1,L2,**kwargs)
 
     # update results
-    results['Y'] = Y
-    results['Y_hat'] = Y_hat
-    results['CM'] = confusion_matrix(Y,Y_hat)
+    results['CM'] = ANN.confusion_matrix(test['Y'],results['P_hat'])
+    results['M'] = M
+    results['af'] = af
+    results['L'] = L
+    results['lambda1'] = L1
+    results['lambda2'] = L2
+    results['eta'] = kwargs['eta'] if 'eta' in kwargs else 1e-3
+    results['epochs'] = kwargs['epochs'] if 'epochs' in kwargs else 1e3
+    results['batch_size'] = kwargs['batch_size'] if 'batch_size' in kwargs else 30
 
+    #===========================================================================
     # send results to pickle
-    pd.Series(results).to_pickle("./results_{:0.4}.pkl".format(results['validate']))
+    #===========================================================================
+
+    # get a list of the results in working directory
+    DIR = np.array(os.listdir())
+    filter = ['results_' in x for x in DIR]
+    DIR = DIR[filter]
+    best = np.array([ x[ x.find("_")+1 : x.find(".pkl") ] for x in DIR ], dtype=np.float32).max()
+
+    # # use if there are results saved already -- add hoc quick fix
+    # # send results to pickle
+    # acc = results['accuracy']['validate']
+    # if acc > best:
+    #     print("\nfound new best result!")
+    #     pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
+    # else:
+    #     print("\nno such luck...")
+
+    # use if no results have been saved 
+    pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
+
+    print(results['accuracy'])
 
     # output results
     return results
