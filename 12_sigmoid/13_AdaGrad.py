@@ -7,6 +7,18 @@ import matplotlib.pyplot as plt
 import DataScience.ActivationFunctions as AF
 import DataScience.ANN as ANN
 
+D = 2
+K = 3
+N = int(K*1.5e4)
+
+X0 = np.random.randn((N//K),D) + np.array([2,2])
+X1 = np.random.randn((N//K),D) + np.array([0,-2])
+X2 = np.random.randn((N//K),D) + np.array([-2,2])
+X = np.vstack((X0,X1,X2))
+
+y = np.array([0]*(N//K) + [1]*(N//K) + [2]*(N//K))
+
+
 def shuffle(*args):
     idx = np.random.permutation(len(args[0]))
     return [X[idx] for X in args]
@@ -66,7 +78,10 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
     batches = N//batch_size
     J_train = np.zeros(epochs*batches)
     J_validate = np.zeros_like(J_train)
-    G = {0:1}
+    GW,Gb = {},{}
+    for l in af:
+        GW[l] = 1
+        Gb[l] = 1
 
     for epoch in range(epochs):
 
@@ -86,29 +101,32 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
             # start with output layer
             dH[L] = Z[L] - Y_b
             dW[L] = np.matmul(Z[L-1].T,dH[L])
-            G[L] += dW[L]**2
             db[L] = dH[L].sum(axis=0)
-            W[L] -= eta0/np.sqrt(G[L]+epsilon)*dW[L] / batch_size
-            b[L] -= eta0/np.sqrt(G[L]+epsilon)*db[L]
+            GW[L] += dW[L]**2
+            Gb[L] += db[L]**2
+            W[L] -= eta0/np.sqrt(GW[L]+epsilon)*dW[L] / batch_size
+            b[L] -= eta0/np.sqrt(Gb[L]+epsilon)*db[L]
 
             # now work back through each layer till input layer
             for l in np.arange(2,L)[::-1]:
                 dZ[l] = np.matmul(dH[l+1],W[l+1].T)
                 dH[l] = dZ[l] * af[l].df(Z[l])
                 dW[l] = np.matmul(Z[l-1].T,dH[l])
-                G[l] += dW[l]**2
                 db[l] = dH[l].sum(axis=0)
-                W[l] -= eta0/np.sqrt(G[l]+epsilon)*dW[l] / batch_size
-                b[l] -= eta0/np.sqrt(G[l]+epsilon)*db[l]
+                GW[l] += dW[l]**2
+                Gb[l] += db[l]**2
+                W[l] -= eta0/np.sqrt(GW[l]+epsilon)*dW[l] / batch_size
+                b[l] -= eta0/np.sqrt(Gb[l]+epsilon)*db[l]
 
             # end with input layer
             dZ[1] = np.matmul(dH[2],W[2].T)
             dH[1] = dZ[1] * af[1].df(Z[1])
             dW[1] = np.matmul(X_b.T,dH[1])
-            G[1] += dW[1]**2
             db[1] = dH[1].sum(axis=0)
-            W[1] -= eta0/np.sqrt(G[l]+epsilon)*dW[1] / batch_size
-            b[1] -= eta0/np.sqrt(G[l]+epsilon)*db[1]
+            GW[1] += dW[1]**2
+            Gb[1] += db[1]**2
+            W[1] -= eta0/np.sqrt(GW[1]+epsilon)*dW[1] / batch_size
+            b[1] -= eta0/np.sqrt(Gb[1]+epsilon)*db[1]
 
             # feed forward for whole train and validation sets
             Z_train = feed_forward(train['PHI'],W,b,af)

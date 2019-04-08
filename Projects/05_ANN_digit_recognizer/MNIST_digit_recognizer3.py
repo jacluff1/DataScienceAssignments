@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import os
+from datetime import datetime
 import pdb
 # import from my DataScience library
 import DataScience.ActivationFunctions as AF
@@ -17,31 +18,42 @@ import DataScience.ANN as ANN
 def pickle_data_sets():
 
     #===========================================================================
-    # load up data
+    # load kaggle data
     #===========================================================================
 
-    # load data
     data = pd.read_csv("usps_digit_recognizer.csv")
 
-    # extract the label column
-    y = data['label'].values
-    data.drop(columns=['label'], inplace=True)
-    X = data.values
-    N = X.shape[0]
-    K = 10
+    # #===========================================================================
+    # # load up data https://pjreddie.com/projects/mnist-in-csv/
+    # #===========================================================================
+    #
+    # # load training and test data
+    # names = ['label'] + [f"pixel_{x}" for x in range(784)]
+    # train = pd.read_csv("mnist_train.csv", names=names)
+    # test = pd.read_csv("mnist_test.csv", names=names)
+    #
+    # # merge sets
+    # data = train.append(test, ignore_index=True)
 
     #===========================================================================
     # design matrix & target matrix
     #===========================================================================
 
-    # construct design matrix
-    PHI = np.column_stack((np.ones((N,1)), X/255))
-    # PHI = np.column_stack((np.ones((N,1)), X))
+    # extract the label column
+    y = data['label'].values
+    data.drop(columns=['label'], inplace=True)
+    X = data.values
+    N,D = X.shape
+    K = 10
 
     # one-hot Y
     Y = np.zeros((N,K))
     for i in range(N):
         Y[i,y[i]] = 1
+
+    # construct design matrix
+    PHI = X/255
+    # PHI = np.column_stack((np.ones((N,1)), X/255))
 
     #===========================================================================
     # shuffle data
@@ -82,11 +94,6 @@ def pickle_data_sets():
     test.to_pickle("test.pkl")
 
 def read_pickle(set):
-    # filename = f"{set}.json"
-    # print(f"\nreading {set} pickle...")
-    # file = pd.read_pickle(filename, typ='series')
-    # file.to_dict()
-    # return file.to_dict()
     filename = f"{set}.pkl"
     return pd.read_pickle(filename)
 
@@ -98,15 +105,13 @@ def read_pickle(set):
 af = {
     1 : AF.tanh(),
     2 : AF.tanh(),
-    3 : AF.tanh(),
-    4 : AF.softmax()
+    3 : AF.softmax()
     }
 
 # set up number of nodes for each layer
 M = {
-    1 : 300,
-    2 : 200,
-    3 : 200
+    1 : 500,
+    2 : 300
     }
 
 # number of layers
@@ -133,19 +138,18 @@ def feed_forward(X,W,b,af):
 def back_propagation(train,validate,af,M,l1,l2,**kwargs):
 
     # input dimentions
+    N,D = train['PHI'].shape
     if train['Y'].shape[0] == train['Y'].size:
-        pdb.set_trace()
         K = len(set(train['Y']))
     else:
         K = train['Y'].shape[1]
-        N,D = train['PHI'].shape
 
     # kwargs
     save_plot = kwargs['save_plot'] if 'save_plot' in kwargs else True
     eta = kwargs['eta'] if 'eta' in kwargs else 1e-3
     epochs = kwargs['epochs'] if 'epochs' in kwargs else 1e3
     epochs = int(epochs)
-    batch_size = kwargs['batch_size'] if 'batch_size' in kwargs else 30
+    batch_size = kwargs['batch_size'] if 'batch_size' in kwargs else N
 
     # set random W and b of appropriate shapes
     W = {}
@@ -169,6 +173,10 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
 
         for batch in range(batches):
 
+            # start timer
+            t0 = datetime.now()
+
+            # get the batch data
             X_b = X[(batch*batch_size):(batch+1)*batch_size]
             Y_b = Y[(batch*batch_size):(batch+1)*batch_size]
 
@@ -182,7 +190,7 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
             dH[L] = Z[L] - Y_b
             dW[L] = np.matmul(Z[L-1].T,dH[L])
             db[L] = dH[L].sum(axis=0)
-            W[L] -= eta*dW[L] / batch_size
+            W[L] -= eta*dW[L] / N
             b[L] -= eta*db[L]
 
             # now work back through each layer till input layer
@@ -191,7 +199,7 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
                 dH[l] = dZ[l] * af[l].df(Z[l])
                 dW[l] = np.matmul(Z[l-1].T,dH[l])
                 db[l] = dH[l].sum(axis=0)
-                W[l] -= eta*dW[l] / batch_size
+                W[l] -= eta*dW[l] / N
                 b[l] -= eta*db[l]
 
             # end with input layer
@@ -199,7 +207,7 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
             dH[1] = dZ[1] * af[1].df(Z[1])
             dW[1] = np.matmul(X_b.T,dH[1])
             db[1] = dH[1].sum(axis=0)
-            W[1] -= eta*dW[1] / batch_size
+            W[1] -= eta*dW[1] / N
             b[1] -= eta*db[1]
 
             # feed forward for whole train and validation sets
@@ -210,6 +218,21 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
             index = batch + (epoch*batches)
             J_train[index] = ANN.cross_entropy(train['Y'],Z_train[L]) / N
             J_validate[index] = ANN.cross_entropy(validate['Y'],Z_validate[L]) / validate['Y'].shape[0]
+
+            #===================================================================
+            # approximate time left till training is done
+            #===================================================================
+
+            # find batch time
+            tf = (datetime.now() - t0).seconds
+
+            # find number of sub-epochs left
+            epochs_left = J_train.shape[0] - index - 1
+
+            # time left till training done (minutes)
+            time_left = tf * epochs_left / 60
+
+            print("Approximately {:0.2f} minutes left.".format(time_left))
 
     # save figure
     if save_plot:
@@ -230,7 +253,6 @@ def back_propagation(train,validate,af,M,l1,l2,**kwargs):
     results = {
         'W'     : W, # weights
         'b'     : b # bias
-        # 'P_hat' : Z[L] # output predictions
         }
 
     # output results
@@ -287,7 +309,8 @@ def plot_handwritten_pictures(nrows=4, ncols=6, cmap='inferno'):
     N = int(nrows*ncols)
 
     # load data
-    data = pd.read_csv("usps_digit_recognizer.csv")
+    # data = pd.read_csv("usps_digit_recognizer.csv")
+    data = pd.read_csv("mnist_train.csv")
     data = data[:N]
 
     # make figure
@@ -347,7 +370,10 @@ def run(af,M,L1,L2,**kwargs):
     results = train_validate_test(train,validate,test,af,M,L1,L2,**kwargs)
 
     # update results
-    results['CM'] = ANN.confusion_matrix(test['Y'],results['P_hat'])
+    try:
+        results['CM'] = ANN.confusion_matrix(test['Y'],results['P_hat'])
+    except:
+        print("something went wrong with the confusion matrix")
     results['M'] = M
     results['af'] = af
     results['L'] = L
@@ -361,25 +387,28 @@ def run(af,M,L1,L2,**kwargs):
     # send results to pickle
     #===========================================================================
 
-    # get a list of the results in working directory
+    # validation accuracy from current run
+    acc = results['accuracy']['validate']
+
+    # find a list of previously pickled best results
     DIR = np.array(os.listdir())
     filter = ['results_' in x for x in DIR]
     DIR = DIR[filter]
-    best = np.array([ x[ x.find("_")+1 : x.find(".pkl") ] for x in DIR ], dtype=np.float32).max()
 
-    # use if there are results saved already -- add hoc quick fix
-    # send results to pickle
-    acc = results['accuracy']['validate']
-    if acc > best:
-        print("\nfound new best result!")
-        pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
+    # if there are past results, save current results only if they are better than any previous results
+    if len(DIR) > 0:
+        best = np.array([ x[ x.find("_")+1 : x.find(".pkl") ] for x in DIR ], dtype=np.float32).max()
+        if acc > best:
+            print("\nfound new best result!")
+            pd.Series(results).to_pickle("results_{:0.4}.pkl".format(acc))
+        else:
+            print("\nno such luck...")
+    # if there are no results, just save the current results
     else:
-        print("\nno such luck...")
+        print("\nfound new best result!")
+        pd.Series(results).to_pickle("results_{:0.4}.pkl".format(acc))
 
-    # # use if no results have been saved
-    # pd.Series(results).to_pickle("results_{:0.4}.pkl".format(results['accuracy']['validate']))
-
-    print(results['accuracy'])
+    print("Accuracy from this round: {:0.4f}".format(acc))
 
     # output results
     return results
